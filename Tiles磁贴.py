@@ -9,6 +9,7 @@ from tkinter import *
 from tkinter import colorchooser,messagebox,filedialog,ttk,font
 from PIL import Image,ImageTk
 from os import path
+import webbrowser
 
 #===========read autosave===========
 
@@ -17,13 +18,19 @@ bcolor = "#0078d7"
 fcolor = "#000000"
 chang = 200
 read = ""
+root = Tk()
+wheel_state = False
+topmost = 1
+
 if path.exists("autosave_text.txt"):
     with open("autosave_text.txt","r",encoding="utf-8") as read_autosave:
         read = read_autosave.read()
 
 if path.exists("autosave_length.txt"):
     with open("autosave_length.txt","r",encoding="utf-8") as read_autosave_length:
-        chang = int(read_autosave_length.read())
+        c = read_autosave_length.read()
+        chang = int(c.split("x")[0])
+        root.geometry(c)
 
 if path.exists("autosave_color.txt"):
     with open("autosave_color.txt","r",encoding="utf-8") as read_autosave_color:
@@ -35,13 +42,19 @@ if path.exists("autosave_transparent.txt"):
     with open("autosave_transparent.txt","r",encoding="utf-8") as read_autosave_transparent:
         tou = float(read_autosave_transparent.read())
 
+if path.exists("autosave_wheel.txt"):
+    with open("autosave_wheel.txt","r",encoding="utf-8") as read_autosave_wheel:
+        wheel_state = True if read_autosave_wheel.read() == "true" else False
+
+if path.exists("autosave_topmost.txt"):
+    with open("autosave_topmost.txt","r",encoding="utf-8") as read_autosave_topmost:
+        topmost = 1 if read_autosave_topmost.read() == "1" else 0
 #===========main===========
 
-root = Tk()
 root.overrideredirect(1)
 root.configure(bg=bcolor)
 root.attributes('-alpha',tou)
-root.wm_attributes('-topmost',1)
+root.wm_attributes('-topmost',topmost)
 window = 1
 x = 0
 x1 = 0
@@ -60,7 +73,6 @@ e = None
 font_check = None
 help_num = 0
 close_window = False
-root.geometry(f"{chang}x{chang}")
 def on_drag_start(event):
     global x, y
     x = event.x
@@ -145,6 +157,7 @@ def turn_font(a):
     ll.config(font=("微软雅黑", int(a)))
 def windows_setting():
     global st,e
+    boo = StringVar(value=0)
     st = Tk()
     st.wm_attributes('-topmost',1)
     st.title("窗口")
@@ -152,17 +165,33 @@ def windows_setting():
     Label(st,text="窗口大小：").grid(row=0,column=0)
     e = Scale(st,from_=1,to=800,orient=HORIZONTAL,command=save,length=500)
     e.set(chang)
-    e.grid(row=0,column=1)
-    Button(st,text="默认",command=lambda:repair(e)).grid(row=0,column=2)
+    e.grid(row=0,column=1,columnspan=5)
+    Button(st,text="默认",command=lambda:repair(e)).grid(row=0,column=6)
     Label(st,text="颜色：").grid(row=1,column=0)
-    Button(st,text="窗口",command=che).grid(row=1,column=1)
-    Button(st, text="文字", command=chee).grid(row=1, column=2)
+    Button(st,text="窗口",command=che).grid(row=1,column=1,columnspan=2)
+    Button(st, text="文字", command=chee).grid(row=1, column=3,columnspan=2)
     Label(st,text="透明度（1最小，10最大）：").grid(row=2,column=0)
     s = Scale(st,from_=1,to=10,orient=HORIZONTAL,command=test)
     s.set(tou*10)
     s.grid(row=2,column=1)
-    Button(st,text="退出",command=exit).grid(row=3,column=0)
-    Button(st, text="关于",command=about).grid(row=3, column=2)
+    c = ttk.Checkbutton(st,text="使用鼠标滚轮快速更改窗口大小")
+    c.state(['!alternate'])
+    if wheel_state:
+        c.state(["selected"])
+    else:
+        c.state(["!selected"])
+    c.grid(row=3,column=0,columnspan=2)
+    Button(st,text="确定",command=lambda:flash(c)).grid(row=3,column=2)
+    c1 = ttk.Checkbutton(st,text="置顶")
+    c1.state(['!alternate'])
+    if topmost == 1:
+        c1.state(["selected"])
+    else:
+        c1.state(["!selected"])
+    c1.grid(row=4,column=0,columnspan=2)
+    Button(st,text="确定",command=lambda:flashh(c1)).grid(row=4,column=2)
+    Button(st,text="退出",command=exit).grid(row=5,column=0)
+    Button(st, text="关于",command=about).grid(row=5, column=5)
     st.mainloop()
 def repair(e):
     global chang
@@ -187,6 +216,29 @@ def exit():
         font_check.destroy()
     except:
         pass
+def flash(c:ttk.Checkbutton):
+    global wheel_state
+    if c.instate(['selected']):
+        wheel_state = True
+        root.bind("<MouseWheel>",wheel)
+    else:
+        wheel_state = False
+        root.unbind("<MouseWheel>")
+def flashh(c:ttk.Checkbutton):
+    global topmost
+    if c.instate(['selected']):
+        topmost = 1
+        root.wm_attributes('-topmost',topmost)
+    else:
+        topmost = 0
+        root.wm_attributes('-topmost',topmost)
+def wheel(event):
+    if event.delta > 0:
+        if chang + 4 <= 800:
+            save(chang + 4)
+    else:
+        if chang - 4 >= 0:
+            save(chang - 4)
 def test(a):
     global tou
     tou = int(a)/10
@@ -230,7 +282,10 @@ def about(name=names,version=versions):
     stt.title("关于")
     stt.wm_attributes("-toolwindow", 2)
     Label(stt,image=imm).pack()
-    Label(stt,text="\n    %s v%s    \n    张泊桥 编程    \n" % (name,version),font=("微软雅黑",20)).pack()
+    Label(stt,text="\n    %s v%s    \n    Porchcar 编程    " % (name,version),font=("微软雅黑",20)).pack()
+    l = Label(stt,text="     开源自https://github.com/Porchcar/Tiles-     \n",font=("微软雅黑",12),fg="cornflowerblue",cursor="hand2")
+    l.pack()
+    l.bind("<Button-1>",lambda event:webbrowser.open("https://github.com/Porchcar/Tiles-"))
     stt.mainloop()
 def help():
     h = Toplevel(root)
@@ -260,13 +315,17 @@ def auto_save():
     with open("autosave_text.txt","w",encoding="utf-8") as autosave_text:
         autosave_text.write(ll.get("1.0",END))
     with open("autosave_length.txt","w",encoding="utf-8") as autosave_length:
-        autosave_length.write(str(chang))
+        autosave_length.write(root.winfo_geometry())
     with open("autosave_color.txt","w",encoding="utf-8") as autosave_color:
         autosave_color.write(bcolor)
         autosave_color.write("\n")
         autosave_color.write(fcolor)
     with open("autosave_transparent.txt","w",encoding="utf-8") as autosave_transparent:
         autosave_transparent.write(str(tou))
+    with open("autosave_wheel.txt","w",encoding="utf-8") as autosave_wheel:
+        autosave_wheel.write("true" if wheel_state else "false")
+    with open("autosave_topmost.txt","w",encoding="utf-8") as autosave_topmost:
+        autosave_topmost.write("1" if topmost == 1 else "0")
     root.after(1000,auto_save)
 def check_font():
     global font_check
@@ -286,13 +345,14 @@ def check_font():
     scale = Scale(font_check,from_=1,to=150,orient=HORIZONTAL,length=400)
     scale.set(now_font_new[1])
     scale.pack()
-    Label(font_check,text="粗体选项：").pack()
-    bold = ttk.Combobox(font_check,value=("不粗体","粗体"))
+    bold = ttk.Checkbutton(font_check,text="粗体")
+    bold.state(["!alternate"])
     if len(now_font_new) == 2:
-        bold.set("不粗体")
+        bold.state(["!selected"])
     else:
-        bold.set("粗体")
+        bold.state(["selected"])
     bold.pack()
+    scale.config(command=lambda event:event_font(event,com,scale,bold))
     Button(font_check,text="保存",command=lambda:save_font(com,scale,bold),width=50).pack()
 def check_fontfile_exists(auto_create:bool=True,default_font:tuple=("微软雅黑",15)):
     if path.exists("tiles_font.txt"):
@@ -303,8 +363,10 @@ def check_fontfile_exists(auto_create:bool=True,default_font:tuple=("微软雅�
             return default_font
         else:
             return default_font
-def save_font(fontf,biger,bold):
-    save_font_to_file((fontf.get(),int(biger.get()),"bold") if bold.get() == "粗体" else (fontf.get(),int(biger.get())))
+def event_font(event=None,com=None,scale=None,bold=None):
+    save_font(com,scale,bold)
+def save_font(fontf,biger,bold:ttk.Checkbutton):
+    save_font_to_file((fontf.get(),int(biger.get()),"bold") if bold.instate(["selected"]) else (fontf.get(),int(biger.get())))
     fon = eval(read_font_from_file())
     ll.config(font=fon)
 def save_font_to_file(font):
@@ -337,4 +399,6 @@ b.bind("<B1-Motion>", on_drag)
 b.bind("<ButtonRelease-1>", on_drag_stop)
 root.after(1000,auto_save)
 ll.insert(END,read)
+if wheel_state:
+    root.bind("<MouseWheel>",wheel)
 root.mainloop()
