@@ -12,6 +12,8 @@ I'm glad someone can assist me in translating.
 
 ------------------------------------------
 
+PS：自24年4月起，作者将不再提供Mac版本，如有需要请自己打包。
+
 Tiles磁贴
 
 电脑上的便利贴
